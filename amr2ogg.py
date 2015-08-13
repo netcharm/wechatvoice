@@ -10,15 +10,7 @@ from subprocess import Popen, PIPE, STDOUT
 import threading
 
 import wave
-import pymedia
 import time
-
-# print getattr(sys, 'frozen', False)
-# if getattr(sys, 'frozen', False):
-#   # frozen
-#   CWD = os.path.abspath(os.path.dirname(sys.executable))
-# else:
-#   CWD = os.path.abspath(os.path.dirname(__file__))
 
 try:
   CWD = os.path.abspath(os.path.dirname(__file__))
@@ -82,71 +74,6 @@ def run(cmd, options=None):
 
   # print 'return code : %s' % p.returncode # is 0 if success
   pass
-
-
-########################################################################3
-# Simple  audio encoder
-def recodeAudio( fName, fOutput, type, bitrate= None ):
-  # ------------------------------------
-
-  import pymedia.audio.acodec as acodec
-  import pymedia.muxer as muxer
-  # Open demuxer
-
-  dm= muxer.Demuxer( fName.split( '.' )[ -1 ].lower() )
-  f= open( fName, 'rb' )
-  s= f.read( )
-  dec= enc= mx= None
-  print 'Recoding %s into %s' % ( fName, fOutput )
-
-  frames= dm.parse( s )
-  if frames:
-    for fr in frames:
-      # Assume for now only audio streams
-
-      if dec== None:
-        # Open decoder
-
-        dec= acodec.Decoder( dm.streams[ fr[ 0 ] ] )
-        print 'Decoder params:\n', dm.streams[ fr[ 0 ] ] , '\n'
-
-      # Decode audio frame
-
-      r= dec.decode( fr[ 1 ] )
-      if r:
-        if bitrate== None:
-          bitrate= r.bitrate
-
-        # Open muxer and encoder
-
-        if enc== None:
-          params= { 'id': acodec.getCodecID(type),
-                    'bitrate': bitrate,
-                    'sample_rate': r.sample_rate,
-                    'channels': r.channels }
-          print 'Encoder params:\n', params , '\n'
-          mx= muxer.Muxer( type )
-          stId= mx.addStream( muxer.CODEC_TYPE_AUDIO, params )
-          enc= acodec.Encoder( params )
-          fw= open(fOutput, 'wb')
-          ss= mx.start()
-          fw.write(ss)
-
-        enc_frames= enc.encode( r.data )
-        if enc_frames:
-          for efr in enc_frames:
-            ss= mx.write( stId, efr )
-            if ss:
-              fw.write(ss)
-
-  f.close()
-
-  if fw:
-    if mx:
-      ss= mx.end()
-      if ss:
-        fw.write(ss)
-    fw.close()
 
 def amr2pcm(amr):
   if not os.path.isfile(amr):
@@ -218,17 +145,6 @@ def pcm2wav(pcm):
     return(wav)
   pass
 
-def wav2(wav, codec):
-  if not os.path.isfile(wav):
-    return(None)
-
-  fn = os.path.splitext(wav)
-  out = fn[0]+'.'+codec
-
-  recodeAudio(wav, out, codec, 8000)
-  return(out)
-  pass
-
 def wavconvert(wav, codec):
   from pydub import AudioSegment
   song = AudioSegment.from_wav(wav)
@@ -236,9 +152,22 @@ def wavconvert(wav, codec):
   fn = os.path.splitext(wav)
   out = fn[0]+'.'+codec
 
-  print(time.ctime())
-  tags = {'artist': 'Various artists', 'album': 'WeChat Voice', 'year': '', 'comments': 'This album is awesome!'}
-  song.export(out, format=codec, parameters=["-q:a", "0"], tags=tags)
+  tags = {
+          'artist'  : 'Various artists',
+          'album'   : 'WeChat Voice',
+          'year'    : time.strftime('%Y-%m-%d'),
+          'comments': 'This album is awesome!'
+         }
+
+  q = '0'
+  if codec.lower() == 'ogg':
+    q = '0'
+  elif codec.lower() in ['mp3', 'mp2', 'mpa']:
+    q = '6'
+  elif codec.lower() in ['aac', 'm4a']:
+    codec = 'mp4'
+
+  song.export(out, format=codec, parameters=["-q:a", q], tags=tags)
   return(out)
   pass
 
@@ -252,7 +181,7 @@ def clean(pcm, wav):
 
 if __name__ == '__main__':
   amr = None
-  target = 'ogg'
+  codec = 'ogg'
   if len(sys.argv) >= 1:
     amr = sys.argv[1]
   if len(sys.argv) >= 2:
@@ -262,7 +191,7 @@ if __name__ == '__main__':
   if amr:
     pcm = amr2pcm(amr)
     wav = pcm2wav(pcm)
-    # ogg = wav2(wav, 'ogg')
-
-    ogg = wavconvert(wav, codec)
+    out = wavconvert(wav, codec)
+    clean(pcm, wav)
+    print('%s has converted to %s.' % (amr, out))
 
