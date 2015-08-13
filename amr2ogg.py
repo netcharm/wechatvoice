@@ -5,6 +5,7 @@ from __future__ import division
 
 import os
 import sys
+import glob
 
 from subprocess import Popen, PIPE, STDOUT
 import threading
@@ -181,17 +182,20 @@ def clean(pcm, wav):
 
 if __name__ == '__main__':
   amr = None
+  out = None
   codec = 'ogg'
-  if len(sys.argv) >= 1:
-    amr = sys.argv[1]
-  if len(sys.argv) >= 2:
+  if len(sys.argv) > 1:
+    fin = sys.argv[1]
+  if len(sys.argv) > 2:
     fn = os.path.splitext(sys.argv[2])
     codec = fn[1][1:]
 
-  if amr:
-    pcm = amr2pcm(amr)
-    wav = pcm2wav(pcm)
-    out = wavconvert(wav, codec)
-    clean(pcm, wav)
-    print('%s has converted to %s.' % (amr, out))
+  if fin:
+    files = glob.glob(fin)
+    for amr in files:
+      pcm = amr2pcm(amr)
+      wav = pcm2wav(pcm)
+      out = wavconvert(wav, codec)
+      clean(pcm, wav)
+      print('%s has converted to %s.\n' % (amr, out))
 
