@@ -11,3 +11,4 @@
 /voice-big-icon-trans.png
 *.pcm
 *.amr
+*.pyc

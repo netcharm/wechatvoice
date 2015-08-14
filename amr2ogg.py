@@ -19,6 +19,12 @@ except:
   CWD = os.path.abspath(os.path.dirname(sys.executable))
   # CWD = os.path.abspath(os.path.dirname(sys.argv[0]))
 
+def path2sys():
+  binpath = []
+  binpath.append(CWD)
+  binpath.append(os.environ['PATH'])
+  os.environ['PATH'] = os.path.pathsep.join(binpath)
+
 def run(cmd, options=None):
   try:
     if sys.stdout.isatty():
@@ -76,13 +82,28 @@ def run(cmd, options=None):
   # print 'return code : %s' % p.returncode # is 0 if success
   pass
 
+def aud2fix(aud):
+  if not os.path.isfile(aud):
+    return(None)
+
+  magic = '#!AMR\n'
+  with open(aud, 'r+b') as audfile:
+    auddata = audfile.read()
+    if auddata[:len(magic)] != magic:
+      audfile.seek(0)
+      audfile.write(magic)
+      audfile.write(auddata)
+  return(aud)
+  pass
+
 def amr2pcm(amr):
   if not os.path.isfile(amr):
     return(None)
 
+  magic = '#!SILK_V3'
   with open(amr, 'r+b') as amrfile:
     amrdata = amrfile.read()
-    if amrdata[:len('#!SILK_V3')] != '#!SILK_V3':
+    if amrdata[:len(magic)] != magic:
       amrfile.seek(0)
       amrfile.write(amrdata[1:])
       amrfile.truncate(len(amrdata)-1)
@@ -154,21 +175,22 @@ def wavconvert(wav, codec):
   out = fn[0]+'.'+codec
 
   tags = {
-          'artist'  : 'Various artists',
+          'artist'  : 'Various Artists',
           'album'   : 'WeChat Voice',
           'year'    : time.strftime('%Y-%m-%d'),
           'comments': 'This album is awesome!'
          }
 
-  q = '0'
+  parameters = ['-q:a', '0']
   if codec.lower() == 'ogg':
-    q = '0'
+    parameters = ['-q:a', '0']
   elif codec.lower() in ['mp3', 'mp2', 'mpa']:
-    q = '6'
-  elif codec.lower() in ['aac', 'm4a']:
+    parameters = ['-q:a', '6']
+  elif codec.lower() in ['aac', 'mp4', 'm4a']:
+    parameters = ['-q:a', '0']
     codec = 'mp4'
 
-  song.export(out, format=codec, parameters=["-q:a", q], tags=tags)
+  song.export(out, format=codec, parameters=parameters, tags=tags)
   return(out)
   pass
 
@@ -181,21 +203,35 @@ def clean(pcm, wav):
 
 
 if __name__ == '__main__':
-  amr = None
-  out = None
+  fin = None
+  fout = None
   codec = 'ogg'
-  if len(sys.argv) > 1:
-    fin = sys.argv[1]
-  if len(sys.argv) > 2:
-    fn = os.path.splitext(sys.argv[2])
-    codec = fn[1][1:]
+  argc = len(sys.argv)
+  if argc == 0:
+    print('usage: amr2ogg.py <*.amr|input.amr> [ogg|mp3|mp4|m4a]')
+    exit
 
-  if fin:
+  if argc > 1:
+    fin = sys.argv[1]
+  if argc > 2:
+    # fn = os.path.splitext(sys.argv[2])
+    # codec = fn[1][1:]
+    codec = sys.argv[2]
+
+  if fin and codec in ['ogg', 'mp3', 'mp4', 'm4a', 'aac']:
+    path2sys()
+
     files = glob.glob(fin)
     for amr in files:
-      pcm = amr2pcm(amr)
-      wav = pcm2wav(pcm)
-      out = wavconvert(wav, codec)
-      clean(pcm, wav)
-      print('%s has converted to %s.\n' % (amr, out))
+      fn = os.path.splitext(amr)
+      ext = fn[1].lower()
+      if ext in ['.amr']:
+        pcm = amr2pcm(amr)
+        wav = pcm2wav(pcm)
+        fout = wavconvert(wav, codec)
+        clean(pcm, wav)
+      elif ext in ['aud']:
+        aud = aud2fix(amr)
+        fout = wavconvert(aud, codec)
+      print('%s has converted to %s.\n' % (amr, fout))
 
