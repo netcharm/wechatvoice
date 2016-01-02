@@ -12,3 +12,8 @@
 *.pcm
 *.amr
 *.pyc
+/*.xml
+/*.sql
+/*.db
+/info.txt
+/*.m4a
