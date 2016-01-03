@@ -12,10 +12,17 @@ import hashlib
 import re
 from lxml import etree
 
-
 # import sqlite3
-# from pysqlcipher import dbapi2 as sqlite3cipher
 from pysqlcipher import dbapi2 as sqlite3
+
+
+MAX_LINE_CHAR = 80        
+
+if sys.platform in ('win32', 'win64'):
+    encoding = 'gbk'
+else:
+    encoding = sys.getdefaultencoding()
+
 
 def getUIN(file):
     uin = None
@@ -44,6 +51,7 @@ def getFileIndex(db, filename):
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     # Execute query
     cur.execute(query)
@@ -74,8 +82,8 @@ def getFileData(db, fileindex, filename):
 
     # Open database, set up cursor to read database
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-
     # Execute query
     cur.execute(query)
 
@@ -112,6 +120,7 @@ def setDecryptParams(cur, key):
             cur.execute( 'PRAGMA cipher_use_hmac = OFF;' )
             cur.execute( 'PRAGMA cipher_page_size = 1024;' )
             cur.execute( 'PRAGMA kdf_iter = 4000;' )
+            cur.execute( "PRAGMA cipher_migrate" )
             result = True
     else:
         print(u'KEY not given for Encrypted DB file!')
@@ -125,6 +134,7 @@ def getDecryptFile( key, fileIn, fileOut ):
 	# conn = sqlite3cipher.connect( u'%s' % fileIn )
     status = False
     conn = sqlite3.connect( u'%s' % fileIn )
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     if setDecryptParams(cur, key):		
         try:
@@ -143,6 +153,9 @@ def getDecryptFile( key, fileIn, fileOut ):
 	
     return(status)
 
+def field(field):
+    return(unicode(field).encode('utf8'))
+        
 def getSex(sex):
     if sex == '1':
         return('Male')
@@ -160,6 +173,7 @@ def getFriendList(db, decrypted=True, key=None):
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     if not decrypted:
@@ -200,6 +214,7 @@ def getContactList(db, decrypted=True, key=None):
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     if not decrypted:
@@ -239,6 +254,7 @@ def getChatroomList(db, decrypted=True, key=None):
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     if not decrypted:
@@ -256,7 +272,7 @@ def getChatroomList(db, decrypted=True, key=None):
             chat_members = zip(row[3].split(u';'), row[4].split(u'、'))  
             # chat_displays = map(lambda x: u'%s[%s]' % (x[1], x[0]), chat_members)
             # chatrooms.append({'name':chat_name, 'nick':chat_nick, 'owner':chat_owner, 'members':chat_members})
-            chatrooms[name] = {'name':chat_name, 'nick':chat_nick, 'owner':chat_owner, 'members':chat_members}
+            chatrooms[chat_name] = {'name':chat_name, 'nick':chat_nick, 'owner':chat_owner, 'members':chat_members}
     except:
         pass
 
@@ -265,14 +281,15 @@ def getChatroomList(db, decrypted=True, key=None):
     return(chatrooms)
 
 def getChatContents(db, user, decrypted=True, key=None):
-    results = []
+    chatlist = []
 
     # Create query
     # query = 'SELECT datetime(subStr(cast(m.createTime as text),1,10),"unixepoch","localtime") AS time,r.nickname AS talker,m.content FROM message m INNER JOIN rcontact r ON m.talker = r.username WHERE r.nickname = "%s" ORDER BY time;' % (user)
-    query = 'SELECT datetime(subStr(cast(m.createTime as text),1,10),"unixepoch","localtime") AS time,case m.isSend WHEN 0 THEN r.nickname WHEN 1 THEN "我" END AS talker,m.content FROM message m INNER JOIN rcontact r ON m.talker = r.username WHERE m.type=1 AND r.nickname = "%s" ORDER BY time;' % (user)
+    query = 'SELECT datetime(subStr(cast(m.createTime as text),1,10),"unixepoch","localtime") AS time,case m.isSend WHEN 0 THEN r.nickname WHEN 1 THEN "我" END AS talker,m.content,m.type,m.status,m.imgPath FROM message m INNER JOIN rcontact r ON m.talker = r.username WHERE m.type=1 AND r.nickname = "%s" ORDER BY time;' % (user)
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     if not decrypted:
@@ -284,17 +301,26 @@ def getChatContents(db, user, decrypted=True, key=None):
     cur.execute(query)
     try:
         for index, row in enumerate(cur):
-            chat_time = row[0]
-            chat_talker = row[1]
-            chat_content = row[2]            
-            results.append({'time':chat_time, 'talker':chat_talker, 'content':chat_content})
+            # chat_time = row[0] 
+            chat_time = row[field(u'time')]
+            # chat_talker = row[1]
+            chat_talker = row[field(u'talker')]
+            # chat_content = row[2]
+            chat_content = row[field(u'content')]
+            # chat_type = row[3]            
+            chat_type = row[field(u'type')]
+            # chat_status = row[4]
+            chat_status = row[field(u'status')]
+            # chat_image = row[5]
+            chat_image = row[field(u'imgPath')]
+            chatlist.append({'time':chat_time, 'talker':chat_talker, 'content':chat_content,'type':chat_type, 'status':chat_status, 'image':chat_image})
             pass
     except:
         pass
 
     cur.close()
 
-    return(results)
+    return(chatlist)
 
 
 def getFuncTemplate(db, decrypted=True, key=None):
@@ -305,6 +331,7 @@ def getFuncTemplate(db, decrypted=True, key=None):
     
     # Open database, set up cursor to read database   
     conn = sqlite3.connect(db)
+    conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
     if not decrypted:
@@ -325,12 +352,7 @@ def getFuncTemplate(db, decrypted=True, key=None):
     return(results)
 
 
-MAX_LINE_CHAR = 80        
-if __name__ == '__main__':
-    # Get database/IMEI from command line
-    db = sys.argv[1]
-    imei = sys.argv[2]
-
+def main(db, imei, user=None):
     print(u'='*MAX_LINE_CHAR)
 
     file_pref = 'system_config_prefs.xml' 
@@ -386,34 +408,41 @@ if __name__ == '__main__':
             print(u'\t%04d: %s [%s] ' % (id_member, member[1], member[0]))
         print(u'')
     print(u'-'*MAX_LINE_CHAR)
-        
-    user = 'UT'
-    user = '轻尘雅琴'
-    chats = getChatContents(file_db, user, decrypted=False, key=key)
-    # print(contacts)
-    id = 0
-    for chat in chats:
-        id += 1
-        print(chat['talker'])
-        talker = chat['talker']
-        content = chat['content']
-        try:
-            if not chat['talker'] == '我':
-                talker = chat['content'].split()[0][:-1]
-                talker_nick = contacts[talker]['nick']
-                talker_alias = contacts[talker]['alias'] 
-                talker_remark = contacts[talker]['remark']
-                if talker_remark : talker = talker_remark
-                elif talker_alias : talker = talker_alias
-                else: talker = talker_nick  
-                talker = u'%s -> %s' % (chat['talker'], talker)
-                content = ''.join(chat['content'].split()[1:])
-        except:
+    
+    if user: 
+        chats = getChatContents(file_db, user, decrypted=False, key=key)
+        id = 0
+        for chat in chats:
+            id += 1
             talker = chat['talker']
-            content = chat['content']      
-        line = u'%04d: [%s]@[%s] : [%s]' % (id, chat['time'], talker, content) 
-        print(line.encode('gbk', 'ignore'))        
-    print(u'-'*MAX_LINE_CHAR)
+            content = chat['content']
+            try:
+                if not chat['talker'] == '我':
+                    talker = chat['content'].split()[0][:-1]
+                    talker_nick = contacts[talker]['nick']
+                    talker_alias = contacts[talker]['alias'] 
+                    talker_remark = contacts[talker]['remark']
+                    if talker_remark : talker = talker_remark
+                    elif talker_alias : talker = talker_alias
+                    else: talker = talker_nick  
+                    talker = u'%s -> %s' % (chat['talker'], talker)
+                    content = ''.join(chat['content'].split()[1:])
+            except:
+                talker = chat['talker']
+                content = chat['content']      
+            line = u'%04d: [%s]@[%s] : [%s]' % (id, chat['time'], talker, content) 
+            print(line.encode(encoding, 'ignore'))        
+        print(u'-'*MAX_LINE_CHAR)
         
     print(u'='*MAX_LINE_CHAR)
+    return
+    
+if __name__ == '__main__':
+    # Get database/IMEI from command line
+    db = sys.argv[1]
+    imei = sys.argv[2]
+    
+    user = None if len(sys.argv) < 4 else sys.argv[3].decode(encoding)
+
+    main(db, imei, user)
     
