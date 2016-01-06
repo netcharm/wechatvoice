@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>WeChatMessage</class>
+ <widget class="QMainWindow" name="WeChatMessage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>640</width>
+    <height>480</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>WeChat Message History</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>WeChat-Icon.png</normaloff>WeChat-Icon.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+     <horstretch>1</horstretch>
+     <verstretch>1</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
+    <item row="0" column="0">
+     <widget class="QTreeWidget" name="tvUser">
+      <property name="minimumSize">
+       <size>
+        <width>200</width>
+        <height>400</height>
+       </size>
+      </property>
+      <column>
+       <property name="text">
+        <string>Contacts</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="QTreeWidget" name="tvMessage">
+      <property name="minimumSize">
+       <size>
+        <width>400</width>
+        <height>400</height>
+       </size>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="textElideMode">
+       <enum>Qt::ElideRight</enum>
+      </property>
+      <property name="rootIsDecorated">
+       <bool>false</bool>
+      </property>
+      <property name="allColumnsShowFocus">
+       <bool>false</bool>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+      <property name="headerHidden">
+       <bool>false</bool>
+      </property>
+      <property name="columnCount">
+       <number>3</number>
+      </property>
+      <attribute name="headerCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="headerDefaultSectionSize">
+       <number>140</number>
+      </attribute>
+      <attribute name="headerMinimumSectionSize">
+       <number>16</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>Time</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Talker</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Content</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>640</width>
+     <height>17</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuExtractDB">
+    <property name="title">
+     <string>Extract DB</string>
+    </property>
+    <addaction name="actionFromHuaweiBackup"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="actionDecryptDB"/>
+   </widget>
+   <addaction name="menuExtractDB"/>
+   <addaction name="menuTools"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionFromHuaweiBackup">
+   <property name="text">
+    <string>From Huawei Backup</string>
+   </property>
+  </action>
+  <action name="actionDecryptDB">
+   <property name="text">
+    <string>Decrypt DB</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
